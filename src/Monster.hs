@@ -1,18 +1,21 @@
 module Monster
     (   Lived (..),
         Bag (..),
-        Monsters (..),
+        Named (..),
         Enemy (..),
         Player (..)
     ) where
 
 class Lived a where
-    hp :: a -> Int
-    damage :: a -> Int
-    updateHp :: (Int -> Int) -> a -> a
+    viewHp :: a -> Int
+    viewDamage :: a -> Int
+    updateHp :: a -> (Int -> Int) -> a
+
+class Named a where
+    viewName :: a -> String
 
 class Bag a where
-    coin :: a -> Int
+    viewCoin :: a -> Int
     earnCoin :: a -> Int -> a
     useCoin :: a -> Int -> a
 
@@ -25,27 +28,33 @@ class Bag a where
 -- Revive -> once
 
 
-data Player = Player Int Int Int
-
-data Monsters = Goblin
-              | Wisp
-              | Zombie
-              | Skeleton
-              | Chicken
-
-data Enemy = Enemy Monsters Int Int
+data Player = Player {
+    playerName :: String,
+    playerHp :: Int,
+    playerDamage :: Int,
+    playerGold :: Int
+}
 
 instance Lived Player where
-    hp (Player hp _ _) = hp
-    damage (Player _ _ damage) = damage
-    updateHp f (Player hp gold damage) = Player (f hp) gold damage
+    viewHp = playerHp
+    viewDamage = playerDamage
+    updateHp p f = p { playerHp = f $ playerHp p }
 
 instance Bag Player where
-    coin (Player _ c _) = c
-    earnCoin (Player hp coin damage) earned = Player hp (coin + earned) damage
-    useCoin (Player hp coin damage) used = Player hp (coin + used) damage
+    viewCoin = playerGold
+    earnCoin p earned = p { playerGold = playerGold p + earned }
+    useCoin p used = p { playerGold = playerGold p - used}
+
+data Enemy = Enemy {
+    enemyName :: String,
+    enemyHp :: Int,
+    enemyDamage :: Int
+}
 
 instance Lived Enemy where
-    hp (Enemy _ hp _) = hp
-    damage (Enemy _ _ d) = d 
-    updateHp f (Enemy t hp d) = Enemy t (f hp) d
+    viewHp = enemyHp
+    viewDamage = enemyDamage
+    updateHp e f = e { enemyHp = f $ enemyHp e }
+
+instance Named Enemy where
+    viewName = enemyName
