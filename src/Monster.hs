@@ -3,6 +3,7 @@ module Monster
         Bag (..),
         Named (..),
         Enemy (..),
+        EnemyType (..),
         Player (..)
     ) where
 
@@ -45,16 +46,31 @@ instance Bag Player where
     earnCoin p earned = p { playerGold = playerGold p + earned }
     useCoin p used = p { playerGold = playerGold p - used}
 
+data EnemyType = Zombie | Skeleton | Goblin | Wisp | Chicken
+
 data Enemy = Enemy {
-    enemyName :: String,
+    enemyType :: EnemyType,
     enemyHp :: Int,
-    enemyDamage :: Int
+    enemyDamage :: Int,
+    enemyGold :: Int
 }
+
+enemyName t = case t of
+    Zombie -> "zombie"
+    Skeleton -> "skeleton"
+    Goblin -> "goblin"
+    Wisp -> "wisp"
+    Chicken -> "chicken"
 
 instance Lived Enemy where
     viewHp = enemyHp
     viewDamage = enemyDamage
     updateHp e f = e { enemyHp = f $ enemyHp e }
 
+instance Bag Enemy where
+    viewCoin = enemyGold
+    earnCoin e _ = e
+    useCoin e _ = e
+
 instance Named Enemy where
-    viewName = enemyName
+    viewName = enemyName . enemyType

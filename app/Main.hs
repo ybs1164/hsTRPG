@@ -7,6 +7,7 @@ import Monster (
     Bag (..),
     Named (..),
     Enemy (..),
+    EnemyType (..),
     Player (..))
 import Control.Concurrent
 import System.IO
@@ -20,22 +21,20 @@ data Action = Attack | UseItem | Go
 
 getEvent :: IO Event
 getEvent = do
-    rand <- randomFunc
-    let index = rand `mod` 3
+    index <- randomRange 0 2
     case index of
         0 -> do
-            rand <- randomFunc
-            let gold = 5 + rand `mod` 6
+            gold <- randomRange 5 11
             return $ GetGold gold
         1 -> return Idle
         2 -> do
-            let t = rand `mod` 5
+            t <- randomRange 0 4
             let monster = case t of
-                    0 -> Enemy "skeleton" 2 1
-                    1 -> Enemy "zombie" 1 2
-                    2 -> Enemy "goblin" 3 2
-                    3 -> Enemy "wisp" 1 1
-                    _ -> Enemy "chicken" 1 0
+                    0 -> Enemy Skeleton 2 1 1 -- undead
+                    1 -> Enemy Zombie 1 2 1 -- undead
+                    2 -> Enemy Goblin 3 2 3
+                    3 -> Enemy Wisp 1 1 0
+                    _ -> Enemy Chicken 1 0 1
             return $ Encounter monster
         _ -> return GetItem
 
@@ -43,20 +42,27 @@ fight :: Player -> Enemy -> IO Player
 fight player enemy = do
     typingString ("Player Life : " ++ show (viewHp player) ++ "\n"
         ++ toUpperFirst (viewName enemy) ++ " Life : " ++ show (viewHp enemy) ++ "\n")
-    typingString "Select what to do : 1. attack > "
+    typingString "Select what to do : 1. attack, 2. run > "
     todo <- getLine
     case todo of
         "attack" -> do
-            let dmg = viewDamage player
-            let damagedEnemy = updateHp enemy (\h -> h - dmg)
-            let damagedPlayer = updateHp player (\h -> h - viewDamage enemy) 
-            typingString ("You attack enemy " ++ show dmg ++ " damage.\n")
+            let dmgPlayer = viewDamage player
+                dmgEnemy = viewDamage enemy 
+                damagedEnemy = updateHp enemy (subtract dmgPlayer)
+                damagedPlayer = updateHp player (subtract dmgEnemy) 
+            typingString ("You attack enemy " ++ show dmgPlayer ++ " damage.\n")
             if viewHp damagedEnemy < 0 then do
                 typingString "You win!\n"
-                return player
+                let g = enemyGold enemy
+                typingString $
+                    "You earn " ++ show g ++ " golds. Now you have " ++ show (viewCoin player + g) ++ " golds.\n"
+                return $ earnCoin player g
             else do
-                typingString ("You attacked by enemy " ++ show (viewDamage enemy) ++ " damage.\n")
+                typingString ("You attacked by enemy " ++ show dmgEnemy ++ " damage.\n")
                 fight damagedPlayer damagedEnemy
+        "run" -> do
+            typingString "Run away.\n"
+            return player
         _ -> do
             typingString "Not exists this command. try again.\n"
             fight player enemy
@@ -86,6 +92,5 @@ main = do
     typingString startingSenario
     playerName <- getLine
     typingString $ welcomeSenario playerName
-    threadDelay 1000000
     typingString welcomeSenario_
     playerIdle (Player playerName 20 10 5)
