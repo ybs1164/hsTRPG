@@ -4,13 +4,15 @@ module Monster
         Named (..),
         Enemy (..),
         EnemyType (..),
-        Player (..)
+        Player (..),
+        Status (..)
     ) where
 
 class Lived a where
     viewHp :: a -> Int
     viewDamage :: a -> Int
     updateHp :: a -> (Int -> Int) -> a
+    revive :: a -> a
 
 class Named a where
     viewName :: a -> String
@@ -28,18 +30,28 @@ class Bag a where
 -- Stun -> dont active one turn
 -- Revive -> once
 
+data Status = Fire Int | Undead Int
+
+instance Eq Status where
+    Fire _ == Fire _ = True
+    Undead _ == Undead _ = True
+    _ == _ = False
+
 
 data Player = Player {
     playerName :: String,
+    playerMaxHp :: Int,
     playerHp :: Int,
     playerDamage :: Int,
-    playerGold :: Int
+    playerGold :: Int,
+    playerStatus :: [Status]
 }
 
 instance Lived Player where
     viewHp = playerHp
     viewDamage = playerDamage
     updateHp p f = p { playerHp = f $ playerHp p }
+    revive p = p { playerHp = playerMaxHp p }
 
 instance Bag Player where
     viewCoin = playerGold
@@ -50,9 +62,11 @@ data EnemyType = Zombie | Skeleton | Goblin | Wisp | Chicken
 
 data Enemy = Enemy {
     enemyType :: EnemyType,
+    enemyMaxHp :: Int,
     enemyHp :: Int,
     enemyDamage :: Int,
-    enemyGold :: Int
+    enemyGold :: Int,
+    enemyStatus :: [Status]
 }
 
 enemyName t = case t of
@@ -66,6 +80,7 @@ instance Lived Enemy where
     viewHp = enemyHp
     viewDamage = enemyDamage
     updateHp e f = e { enemyHp = f $ enemyHp e }
+    revive e = e { enemyHp = enemyMaxHp e }
 
 instance Bag Enemy where
     viewCoin = enemyGold

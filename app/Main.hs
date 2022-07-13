@@ -8,7 +8,8 @@ import Monster (
     Named (..),
     Enemy (..),
     EnemyType (..),
-    Player (..))
+    Player (..),
+    Status (..))
 import Control.Concurrent
 import System.IO
 
@@ -30,11 +31,11 @@ getEvent = do
         2 -> do
             t <- randomRange 0 4
             let monster = case t of
-                    0 -> Enemy Skeleton 2 1 1 -- undead
-                    1 -> Enemy Zombie 1 2 1 -- undead
-                    2 -> Enemy Goblin 3 2 3
-                    3 -> Enemy Wisp 1 1 0
-                    _ -> Enemy Chicken 1 0 1
+                    0 -> Enemy Skeleton 2 2 1 1 [Undead 1] -- undead
+                    1 -> Enemy Zombie 1 1 2 1 [Undead 2] -- undead
+                    2 -> Enemy Goblin 3 3 2 3 []
+                    3 -> Enemy Wisp 1 1 1 0 []
+                    _ -> Enemy Chicken 1 1 0 1 []
             return $ Encounter monster
         _ -> return GetItem
 
@@ -52,11 +53,15 @@ fight player enemy = do
                 damagedPlayer = updateHp player (subtract dmgEnemy) 
             typingString ("You attack enemy " ++ show dmgPlayer ++ " damage.\n")
             if viewHp damagedEnemy < 0 then do
-                typingString "You win!\n"
-                let g = enemyGold enemy
-                typingString $
-                    "You earn " ++ show g ++ " golds. Now you have " ++ show (viewCoin player + g) ++ " golds.\n"
-                return $ earnCoin player g
+                if Undead 0 `elem` enemyStatus damagedEnemy then do
+                    typingString "Enemy dead, and revive.\n"
+                    fight player $ revive damagedEnemy
+                else do
+                    typingString "You win!\n"
+                    let g = enemyGold enemy
+                    typingString $
+                        "You earn " ++ show g ++ " golds. Now you have " ++ show (viewCoin player + g) ++ " golds.\n"
+                    return $ earnCoin player g
             else do
                 typingString ("You attacked by enemy " ++ show dmgEnemy ++ " damage.\n")
                 fight damagedPlayer damagedEnemy
@@ -93,4 +98,4 @@ main = do
     playerName <- getLine
     typingString $ welcomeSenario playerName
     typingString welcomeSenario_
-    playerIdle (Player playerName 20 10 5)
+    playerIdle (Player playerName 20 20 10 5 [])
