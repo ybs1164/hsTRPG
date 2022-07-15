@@ -5,8 +5,13 @@ module Monster
         Enemy (..),
         EnemyType (..),
         Player (..),
-        Status (..)
+        Status (..),
+        enableStatus,
+        viewStatus,
+        addStatus
     ) where
+import Data.Monoid
+import Data.Bits (Bits(xor))
 
 class Lived a where
     viewHp :: a -> Int
@@ -22,7 +27,6 @@ class Bag a where
     earnCoin :: a -> Int -> a
     useCoin :: a -> Int -> a
 
-
 -- Thorn -> receive damage when attacked
 -- Fire -> damaged when other's turn end
 -- Drain -> heal when attack
@@ -32,11 +36,23 @@ class Bag a where
 
 data Status = Fire Int | Undead Int
 
-instance Eq Status where
-    Fire _ == Fire _ = True
-    Undead _ == Undead _ = True
-    _ == _ = False
+statusKindComp :: Status -> Status -> Bool
+statusKindComp (Fire _) (Fire _) = True
+statusKindComp (Undead _) (Undead _) = True
+statusKindComp _ _ = False
 
+statusValue :: Status -> Int
+statusValue (Fire x) = x
+statusValue (Undead x) = x
+
+enableStatus :: [Status] -> (Int -> Status) -> Bool
+enableStatus statusList status = any (statusKindComp $ status 0) statusList
+
+viewStatus :: [Status] -> (Int -> Status) -> Int
+viewStatus statusList status = foldr ((+) . statusValue) 0 (filter (statusKindComp $ status 0) statusList)
+
+addStatus :: [Status] -> Status -> [Status]
+addStatus statusList s = s: statusList
 
 data Player = Player {
     playerName :: String,

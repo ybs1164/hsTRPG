@@ -2,14 +2,7 @@ module Main where
 
 import Lib
 import Typing
-import Monster (
-    Lived (..),
-    Bag (..),
-    Named (..),
-    Enemy (..),
-    EnemyType (..),
-    Player (..),
-    Status (..))
+import Monster
 import Control.Concurrent
 import System.IO
 
@@ -53,9 +46,9 @@ fight player enemy = do
                 damagedPlayer = updateHp player (subtract dmgEnemy) 
             typingString ("You attack enemy " ++ show dmgPlayer ++ " damage.\n")
             if viewHp damagedEnemy < 0 then do
-                if Undead 0 `elem` enemyStatus damagedEnemy then do
+                if viewStatus (enemyStatus damagedEnemy) Undead > 0 then do
                     typingString "Enemy dead, and revive.\n"
-                    fight player $ revive damagedEnemy
+                    fight player $ revive (damagedEnemy { enemyStatus = addStatus (enemyStatus damagedEnemy) (Undead (-1)) })
                 else do
                     typingString "You win!\n"
                     let g = enemyGold enemy
