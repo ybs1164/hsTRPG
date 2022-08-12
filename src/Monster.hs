@@ -2,16 +2,12 @@ module Monster
     (   Lived (..),
         Bag (..),
         Named (..),
+        HasStatus (..),
         Enemy (..),
         EnemyType (..),
         Player (..),
         Status (..),
-        enableStatus,
-        viewStatus,
-        addStatus
     ) where
-import Data.Monoid
-import Data.Bits (Bits(xor))
 
 class Lived a where
     viewHp :: a -> Int
@@ -27,15 +23,24 @@ class Bag a where
     earnCoin :: a -> Int -> a
     useCoin :: a -> Int -> a
 
+class HasStatus a where
+    viewStatus :: a -> (Int -> Status) -> Int
+    addStatus :: a -> Status -> a
+
+
 -- Thorn -> receive damage when attacked
 -- Fire -> damaged when other's turn end
 -- Drain -> heal when attack
 -- Shield -> decrease damage n attack
 -- Stun -> dont active one turn
--- Revive -> once
 
-data Status = Fire Int | Undead Int
 
+data Status = 
+    Fire Int 
+    | Undead Int
+    | Shield Int
+
+-- compare status type
 statusKindComp :: Status -> Status -> Bool
 statusKindComp (Fire _) (Fire _) = True
 statusKindComp (Undead _) (Undead _) = True
@@ -44,15 +49,8 @@ statusKindComp _ _ = False
 statusValue :: Status -> Int
 statusValue (Fire x) = x
 statusValue (Undead x) = x
+statusValue (Shield x) = x
 
-enableStatus :: [Status] -> (Int -> Status) -> Bool
-enableStatus statusList status = any (statusKindComp $ status 0) statusList
-
-viewStatus :: [Status] -> (Int -> Status) -> Int
-viewStatus statusList status = foldr ((+) . statusValue) 0 (filter (statusKindComp $ status 0) statusList)
-
-addStatus :: [Status] -> Status -> [Status]
-addStatus statusList s = s: statusList
 
 data Player = Player {
     playerName :: String,
@@ -72,7 +70,11 @@ instance Lived Player where
 instance Bag Player where
     viewCoin = playerGold
     earnCoin p earned = p { playerGold = playerGold p + earned }
-    useCoin p used = p { playerGold = playerGold p - used}
+    useCoin p used = p { playerGold = playerGold p - used }
+
+instance HasStatus Player where
+    viewStatus p s = foldr ((+) . statusValue) 0 (filter (statusKindComp $ s 0) $ playerStatus p)
+    addStatus p s = p { playerStatus = s : playerStatus p }
 
 data EnemyType = Zombie | Skeleton | Goblin | Wisp | Chicken
 
@@ -105,3 +107,7 @@ instance Bag Enemy where
 
 instance Named Enemy where
     viewName = enemyName . enemyType
+
+instance HasStatus Enemy where
+    viewStatus e s = foldr ((+) . statusValue) 0 (filter (statusKindComp $ s 0) $ enemyStatus e)
+    addStatus e s = e { enemyStatus = s : enemyStatus e }

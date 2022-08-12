@@ -11,7 +11,9 @@ welcomeSenario name = "Hello, " ++ name ++ ". Now you just have wonderful advent
 welcomeSenario_ = "Are you ready? Let's go!\n"
 
 data Event = Encounter Enemy | GetItem | GetGold Int | Shop | Idle
-data Action = Attack | UseItem | Go
+
+-- data Action = Attack | UseItem | Go | Run
+
 
 getEvent :: IO Event
 getEvent = do
@@ -31,24 +33,49 @@ getEvent = do
                     _ -> Enemy Chicken 1 1 0 1 []
             return $ Encounter monster
         _ -> return GetItem
+        
+printInfoList :: [String] -> IO Bool
+printInfoList [] = return True
+printInfoList (info:infoList) = do
+    typingString info
+    printInfoList infoList
+
 
 fight :: Player -> Enemy -> IO Player
 fight player enemy = do
-    typingString ("Player Life : " ++ show (viewHp player) ++ "\n"
-        ++ toUpperFirst (viewName enemy) ++ " Life : " ++ show (viewHp enemy) ++ "\n")
-    typingString "Select what to do : 1. attack, 2. run > "
+    let infoList = [infoLife]
+    let infoList = "Select what to do : 1. attack, 2. run > ":infoList
+    printInfoList infoList
     todo <- getLine
-    case todo of
-        "attack" -> do
-            let dmgPlayer = viewDamage player
-                dmgEnemy = viewDamage enemy 
-                damagedEnemy = updateHp enemy (subtract dmgPlayer)
-                damagedPlayer = updateHp player (subtract dmgEnemy) 
-            typingString ("You attack enemy " ++ show dmgPlayer ++ " damage.\n")
-            if viewHp damagedEnemy < 0 then do
-                if viewStatus (enemyStatus damagedEnemy) Undead > 0 then do
+    let (printContent, loopCheck, nextedPlayer, nextedEnemy) = action todo
+    printInfoList printContent
+    if loopCheck then do
+        fight nextedPlayer nextedEnemy
+    else do
+        return nextedPlayer
+    -- case todo of
+    --     "1" -> attack
+    --     "2" -> do
+    --         typingString "Run away.\n"
+    --         return player
+    --     _ -> do
+    --         typingString "Not exists this command. try again.\n"
+    --         fight player enemy
+    where
+        infoLife = "Player Life : " ++ show (viewHp player) ++ "\n"
+            ++ toUpperFirst (viewName enemy) ++ " Life : " ++ show (viewHp enemy) ++ "\n"
+        attack = do
+            let (damagedPlayer, damagedEnemy) = getAttackedPlayerEnemy player enemy
+            typingString ("You attack enemy " ++ show (viewDamage player) ++ " damage.\n")
+            checkWin damagedPlayer damagedEnemy
+
+        getAttackedPlayerEnemy :: Player -> Enemy -> (Player, Enemy)
+        getAttackedPlayerEnemy p e = (updateHp p (subtract $ viewDamage e), updateHp e (subtract $ viewDamage p))
+
+        checkWin p e = if viewHp e < 0 then do
+                if viewStatus e Undead > 0 then do
                     typingString "Enemy dead, and revive.\n"
-                    fight player $ revive (damagedEnemy { enemyStatus = addStatus (enemyStatus damagedEnemy) (Undead (-1)) })
+                    fight player $ revive (addStatus e (Undead (-1)))
                 else do
                     typingString "You win!\n"
                     let g = enemyGold enemy
@@ -56,14 +83,14 @@ fight player enemy = do
                         "You earn " ++ show g ++ " golds. Now you have " ++ show (viewCoin player + g) ++ " golds.\n"
                     return $ earnCoin player g
             else do
-                typingString ("You attacked by enemy " ++ show dmgEnemy ++ " damage.\n")
-                fight damagedPlayer damagedEnemy
-        "run" -> do
-            typingString "Run away.\n"
-            return player
-        _ -> do
-            typingString "Not exists this command. try again.\n"
-            fight player enemy
+                typingString ("You attacked by enemy " ++ show (viewDamage enemy) ++ " damage.\n")
+                fight p e
+        
+        action :: String -> ([String], Bool, Player, Enemy)
+        action select = case select of
+            "1" -> ([], True, player, enemy)
+            "2" -> ([], True, player, enemy)
+            _ -> ([], False, player, enemy)
 
 playerIdle :: Player -> IO ()
 playerIdle player = do
